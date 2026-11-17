@@ -71,7 +71,7 @@ O padrão de desenvolvimento usa SQLite se `DATABASE_URL` não estiver definida.
 DATABASE_URL=mysql+pymysql://claviculario:senha@localhost:3306/claviculario?charset=utf8mb4
 ```
 
-A API responde a requisições de navegador vindas de qualquer origem (CORS `*`). Isso permite que o site seja hospedado em outro endereço. As rotas continuam exigindo JWT ou token do dispositivo conforme indicado; CORS não substitui autenticação.
+A configuração de CORS lê `CORS_ORIGINS` do ambiente. Se a variável não for definida, a API aceita requisições de navegador vindas de qualquer origem (`*`), sem exigir configuração manual. Para restringir as origens, informe uma ou mais URLs separadas por vírgula, por exemplo `CORS_ORIGINS=https://site.exemplo.com,https://admin.exemplo.com`. As rotas continuam exigindo JWT ou token do dispositivo conforme indicado; CORS não substitui autenticação.
 
 O comando `init-db` cria tabelas usando os modelos Python. Como alternativa, importe `schema.sql` no MySQL e depois rode `flask --app app init-db` para criar o administrador inicial. Se já existir um banco de uma versão anterior sem o campo RFID, aplique uma vez:
 

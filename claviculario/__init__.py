@@ -36,7 +36,8 @@ def create_app(test_config=None):
         app.config.update(test_config)
 
     # As extensões são ligadas ao app aqui para facilitar configuração e reuso.
-    CORS(app, resources={r"/*": {"origins": "*"}})
+    cors_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "*").split(",") if origin.strip()]
+    CORS(app, resources={r"/*": {"origins": cors_origins or ["*"]}})
     db.init_app(app)  # conecta SQLAlchemy a esta aplicação Flask
     jwt.init_app(app)  # conecta verificação de JWT às requisições desta aplicação
 
