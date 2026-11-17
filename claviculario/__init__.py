@@ -3,6 +3,7 @@ import os
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify
+from flask_cors import CORS
 from werkzeug.security import generate_password_hash
 
 from .extensions import db, jwt
@@ -35,6 +36,7 @@ def create_app(test_config=None):
         app.config.update(test_config)
 
     # As extensões são ligadas ao app aqui para facilitar configuração e reuso.
+    CORS(app, resources={r"/*": {"origins": "*"}})
     db.init_app(app)  # conecta SQLAlchemy a esta aplicação Flask
     jwt.init_app(app)  # conecta verificação de JWT às requisições desta aplicação
 
