@@ -194,8 +194,13 @@ O `event_id` é criado pelo ESP32 para cada leitura/operação e deve ser mantid
 | `POST` | `/api/auth/login` | público | Faz login com `email` e `password`. |
 | `GET` | `/api/auth/me` | usuário autenticado | Retorna os dados da conta do token. |
 | `POST` | `/api/users` | administrador | Cadastra pessoa, senha, papel e UID RFID opcional. |
+| `GET` | `/api/users` | administrador | Lista usuários, inclusive inativos. |
+| `PATCH` | `/api/users/{id}` | administrador | Altera os campos enviados do usuário. |
+| `DELETE` | `/api/users/{id}` | administrador | Desativa o usuário, preservando o histórico. |
 | `GET` | `/api/keys` | usuário autenticado | Lista chaves e disponibilidade. |
 | `POST` | `/api/keys` | administrador | Cadastra uma chave. |
+| `PATCH` | `/api/keys/{id}` | administrador | Altera os campos enviados da chave. |
+| `DELETE` | `/api/keys/{id}` | administrador | Desativa a chave, preservando o histórico. |
 | `GET` | `/api/reservations` | usuário autenticado | Lista reservas; aceita `from`, `to`, `key_id`. |
 | `POST` | `/api/reservations` | usuário autenticado | Cria reserva. |
 | `DELETE` | `/api/reservations/{id}` | dono ou administrador | Cancela reserva confirmada. |
@@ -213,6 +218,12 @@ curl -X POST http://raspberrypi:5000/api/auth/login \
 ```
 
 Copie o `access_token` da resposta para usar nas chamadas do site.
+
+### Administração de usuários e chaves
+
+As rotas `PATCH` aceitam somente os campos que precisam mudar. Em usuários, os campos aceitos são `name`, `email`, `password`, `role`, `rfid_uid` e `active`; senhas continuam armazenadas como hash e devem ter pelo menos 8 caracteres. Em chaves, são aceitos `code`, `name`, `description`, `sensor_id` e `active`. E-mail, UID RFID, código e sensor continuam únicos.
+
+As rotas `DELETE` desativam o registro em vez de apagá-lo fisicamente, para manter reservas, empréstimos e eventos históricos. Usuários desativados não podem entrar; chaves desativadas deixam de aparecer na listagem normal e não podem ser reservadas. A listagem administrativa de usuários inclui contas inativas, e ambos os tipos podem ser reativados com `PATCH` enviando `{"active": true}`.
 
 ### 2. Cadastrar uma chave
 

@@ -4,6 +4,7 @@ from functools import wraps
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import create_access_token, get_jwt, get_jwt_identity, jwt_required
+from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .extensions import db
@@ -79,3 +80,64 @@ def create_user():
     db.session.add(user)
     db.session.commit()
     return jsonify(user=user.public()), 201
+
+
+@bp.get("/api/users")
+@admin_required
+def list_users():
+    users = User.query.order_by(User.name).all()
+    return jsonify(users=[{**user.public(), "rfid_uid": user.rfid_uid,
+                          "active": user.active} for user in users])
+
+
+@bp.patch("/api/users/<int:user_id>")
+@admin_required
+def update_user(user_id):
+    user = db.session.get(User, user_id)
+    if not user:
+        return fail("Usuário não encontrado.", 404)
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not data:
+        return fail("Informe os campos que deseja alterar.")
+    if "name" in data:
+        if not isinstance(data["name"], str) or not data["name"].strip():
+            return fail("Nome não pode ficar vazio.")
+        user.name = data["name"].strip()
+    if "email" in data:
+        if not isinstance(data["email"], str) or not data["email"].strip():
+            return fail("E-mail não pode ficar vazio.")
+        user.email = data["email"].lower().strip()
+    if "password" in data:
+        if not isinstance(data["password"], str) or len(data["password"]) < 8:
+            return fail("A senha deve ter pelo menos 8 caracteres.")
+        user.password_hash = generate_password_hash(data["password"])
+    if "role" in data:
+        if data["role"] not in ("admin", "user"):
+            return fail("Papel deve ser 'admin' ou 'user'.")
+        user.role = data["role"]
+    if "rfid_uid" in data:
+        rfid_uid = (data["rfid_uid"] or "").strip().upper() or None
+        if rfid_uid and User.query.filter(User.rfid_uid == rfid_uid, User.id != user.id).first():
+            return fail("Esse cartão RFID já está associado a um usuário.", 409)
+        user.rfid_uid = rfid_uid
+    if "active" in data:
+        if not isinstance(data["active"], bool):
+            return fail("active deve ser true ou false.")
+        user.active = data["active"]
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return fail("E-mail já cadastrado.", 409)
+    return jsonify(user={**user.public(), "rfid_uid": user.rfid_uid, "active": user.active})
+
+
+@bp.delete("/api/users/<int:user_id>")
+@admin_required
+def delete_user(user_id):
+    user = db.session.get(User, user_id)
+    if not user:
+        return fail("Usuário não encontrado.", 404)
+    user.active = False
+    db.session.commit()
+    return "", 204

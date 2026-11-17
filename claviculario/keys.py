@@ -51,3 +51,46 @@ def create_key():
         db.session.rollback()  # desfaz a transação que falhou e limpa a sessão ORM
         return fail("Código ou identificador do sensor já cadastrado.", 409)
     return jsonify(key=key.public()), 201
+
+
+@bp.patch("/api/keys/<int:key_id>")
+@admin_required
+def update_key(key_id):
+    key = db.session.get(Key, key_id)
+    if not key:
+        return fail("Chave não encontrada.", 404)
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not data:
+        return fail("Informe os campos que deseja alterar.")
+    for field in ("code", "name"):
+        if field in data:
+            if not isinstance(data[field], str) or not data[field].strip():
+                return fail(f"{field} não pode ficar vazio.")
+            setattr(key, field, data[field].strip())
+    for field in ("description", "sensor_id"):
+        if field in data:
+            value = data[field]
+            if value is not None and not isinstance(value, str):
+                return fail(f"{field} deve ser texto ou null.")
+            setattr(key, field, value.strip() or None if value else None)
+    if "active" in data:
+        if not isinstance(data["active"], bool):
+            return fail("active deve ser true ou false.")
+        key.active = data["active"]
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return fail("Código ou identificador do sensor já cadastrado.", 409)
+    return jsonify(key=key.public(current_holders().get(key.id)))
+
+
+@bp.delete("/api/keys/<int:key_id>")
+@admin_required
+def delete_key(key_id):
+    key = db.session.get(Key, key_id)
+    if not key:
+        return fail("Chave não encontrada.", 404)
+    key.active = False
+    db.session.commit()
+    return "", 204
